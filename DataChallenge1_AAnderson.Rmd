@@ -1,0 +1,85 @@
+---
+title: "DataChallenge1_AAnderson"
+author: "Ashley Anderson"
+date: "9/30/2020"
+output: html_document
+---
+
+```{r,echo=FALSE}
+knitr::opts_chunk$set(cache=TRUE, error=FALSE, message=FALSE, warning=FALSE, tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Load in required packages
+```{r}
+library(tidyverse)
+library(dplyr)
+library(stringr)
+```
+## Read in data
+```{r}
+state_milk_production <- read_csv("state_milk_production.csv")
+clean_cheese <- read_csv("clean_cheese.csv")
+fluid_milk_sales <- read_csv("fluid_milk_sales.csv")
+milk_product_facts <- read_csv("milk_products_facts.csv")
+milkcow_facts <- read_csv("milkcow_facts.csv")
+```
+
+## Plot 1: Histogram
+```{r}
+state_milk_production_bil <- state_milk_production %>% mutate(milk_produced_in_billions = (milk_produced/1000000000)) ## Added column to data frame to change milk production units to billions
+ggplot(state_milk_production_bil, aes(milk_produced_in_billions)) + ## Initiated ggplot and built histogram
+  geom_histogram(bins = 30, color="blue", fill="lightblue", alpha = 0.8) + ## Changed bin size to see more of the variability, changed fill, outline and transparency of bins
+  labs(title="Milk Production in the United States by State from 1970 - 2017", x="Annual Milk Production (billions of pounds)", y="Number of States") # Added title, and x and y axis labels
+```
+<br>**Figure 1**: This plot counts the annual milk production per state from 1970 - 2017. The plot is right-skewed; inferring there are potential outliers. The median number of billions of pounds of milk produced annually has remained around 5 billion pounds from 1970-2017.
+
+## Plot 2: Scatterplot
+
+```{r}
+state_milk_production_Iowa <- filter(state_milk_production_bil, state  == "Iowa") ## Filter data frame Plot 1 to only show the ice cream capital of the world
+IceCream_Joined <- state_milk_production_Iowa %>% inner_join(milk_product_facts, by = c('year' = 'year')) ## Join milk_product_facts with the Iowa milk production
+ggplot(IceCream_Joined, aes(x=milk_produced_in_billions, y=frozen_ice_cream_regular, color = year)) + geom_point() + ## Initiate ggplot to plot the ice cream consumption in the US compared to the milk production in Iowa data on a scatter plot
+  geom_smooth(method = 'lm', se=FALSE, color="hotpink1") + ## add trendline without error bars and change color
+  labs(title="Ice Cream Capital of the World Milk Production versus \nUnited States Ice Cream Consuption from 1975 - 2017", x="Iowa Annual Milk Production (billions of pounds)", y="Frozen Ice Cream Consumed (pounds per person)", color="Year") # Add title, x and y labels, and color in the year
+```
+<br>**Figure 2**: Iowa was named the Ice Cream Capital of the World in 1994. It could be assumed the milk production in Iowa would increase with the frozen ice cream consumption. This plot shows the annual milk production (in billions of pounds) versus the frozen ice cream consumed in the US (in pounds per person). The gradient of colors represents the years 1975 - 2017. This plot shows that as the annual milk production increased in Iowa, the national consumption of ice cream decreased. This could infer Iowa uses milk from other states to make their ice cream.
+
+## Plot 3: Stacked Barplot
+```{r}
+fluid_milk_sales_cut <- filter(fluid_milk_sales, milk_type %in% c("Skim", "Whole", "Eggnog")) ## Filter data frame to only show three types of milk for comparability
+fluid_milk_sales_bil <- fluid_milk_sales_cut %>% mutate(milk_sold_in_billions = (pounds/1000000000)) ## Added column to data frame to show sales in billions for easier graphing
+ggplot(fluid_milk_sales_bil, aes(fill=milk_type, x=year, y=milk_sold_in_billions)) +  geom_bar(position='stack', stat='identity') + ## Initialize ggplot to create barplot mapping year versus milk sales for 3 different milk types
+  geom_curve(x=2007, xend = 1993, y=33, yend = 28, arrow = arrow(length = unit(0.3, "cm")), curvature=0.5) + ## Add arrow line pointing to 1993
+  annotate("text", x = 2008, y = 33, label = "Got Milk? Campaign \nLaunched", size=3, hjust=0) + ## Add text to arrow line
+  labs(title = "Milk Sales From 1975 to 2017", x="Year", y="Milk Sales (billions of $)", fill="Type of Milk") + ## Add title, x and y labels, and legend title
+  scale_fill_brewer(palette="Spectral") ## change color using RColorBrewer
+```
+<br>**Figure 3:** The plot shows the total milk sales (in billions of dollars) from the year 1975 to 2017. Three milk types are represented on the plot by three different colors. The graph shows that overtime, whole milk has remained the highest grossing milk product of the three, while eggnog is greatly smaller in gross product. The total sales of milk decreases overtime. This may be surprising due to inflation, but it appears milk sales are decreasing at a faster rate than inflation is increasing milk prices. The plot represents a slight increase in milk sales around 1993 when the "Got Milk?" campaign was first released.
+
+## Plot 4: Boxplot
+```{r}
+state_milk_production_bil_cut <- filter(state_milk_production_bil, year == "2000") ## Used mutated data frame from Plot 1 and filtered to only represent the year 2000
+Plotfour <- ggplot(state_milk_production_bil_cut, aes(x=region, y=milk_produced_in_billions, fill=region)) + geom_boxplot() + ## Initialize ggplot and create boxplot
+  scale_y_continuous(trans='log10') + ## Scale y-axis in log10 so the data is not squished to the bottom and easily visable
+  labs(title="Milk Produced in 2000 by Regions of the United States", x="Regions of the United States", y="Annual Milk Production (billions of pounds)") ## Add title, x label and y label
+Plotfour + theme(axis.text.x = element_text(hjust=1, size=8, angle=45),legend.position = "none") + ## Adjust the spacing, size, and angle of the x-axis labels so they are all readable. Also removed the legend because it didn't add anything to the graph.
+  scale_fill_brewer(palette="Spectral") ## changed colors using RColorBrewer
+```
+<br>**Figure 4:** This plot shows the annual milk production by U.S. region in 2000. The data is represented in quartiles, showing the high, medium, and low ends of the data. Regions with more spread across the graph, may have varying weather climates to be able to farm year-round. The Lake States had the highest annual milk production in 2000 where the Delta States and Northeast states had the lowest annual milk production.
+
+## Plot 5: Barplot
+```{r}
+median_slaughter_price <- median(milkcow_facts$slaughter_cow_price) ## Calculate median price for grouping
+milkcow_facts$slaughter_label <-  cut(milkcow_facts$slaughter_cow_price, breaks=c(0, 0.45, 1.0204), labels=c("low", "high")) ## Group slaughter price into two groups
+milkcow_facts %>% ggplot(aes(x=year, y=milk_cow_cost_per_animal, fill=slaughter_label)) + geom_bar(stat="identity", position=position_dodge()) + ## Initiate ggplot and plot cost per milk cow by year factoring in the slaughter category 
+  labs(title="Milk Cow Costs versus Slaughter Costs by \nCategory from 1980 to 2014", x="Year", y="Average cost of milk cow per animal (dollars)", fill="Categorical \nSlaughter Cost") ## Add title, x and y labels, and legend title
+```
+<br> **Figure 5:** The plot shows the average cost of the milk cow (in dollars) between the years 1980 and 2014. The slaughter cow price (value of meat in dollars per pound) was split into two categories, low and high, to refer to the categories as a generally high price or a generally low price. In the 1980s, the slaughter cost was mostly low when the milk cow cost was low which is to be expected. Between approximately 1988 and 1995, the slaughter cost was high while the milk cow cost was low. Slaughter cost was low again and then appears to be high starting around 2005. The low slaughter cost in 2009 could be representative of the 2008/2009 recession.
+
+
+
+
+
+
+
+
